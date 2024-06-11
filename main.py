@@ -135,7 +135,12 @@ def chat():
     messages = client.beta.threads.messages.list(thread_id=thread_id)
     response = messages.data[0].content[0].text.value
 
-    print(f"Assistant response: {response}")
+    # print(f"Assistant response: {response}")
+    # for chunk in response:
+    #         yield f"data: {chunk}\n\n"
+    #         time.sleep(0.1)
+
+    # return Response(generate_response(), content_type='text/event-stream')
     response = jsonify({"response": response})
 
     # Add CORS headers to the response

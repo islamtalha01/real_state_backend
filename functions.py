@@ -117,7 +117,10 @@ def simplify_financial_data(data):
                 f"Here is some data, parse and format it exactly as shown in the example: {data_str}"
             }
         ],
-        temperature=0)
+        temperature=0,
+        # stream=True,
+
+        )
 
     simplified_data = json.loads(completion.choices[0].message.content)
     print("Simplified Data:", simplified_data)
