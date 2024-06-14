@@ -3,7 +3,7 @@
 import json
 import os
 import time
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,send_file
 from flask_cors import CORS
 import openai
 from openai import OpenAI
@@ -18,7 +18,7 @@ app = Flask(__name__)
 CORS(app) 
 required_version = version.parse("1.1.1")
 current_version = version.parse(openai.__version__)
-OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
+OPENAI_API_KEY = os.environ['OPENAI_API_KEY'].rstrip()
 if current_version < required_version:
     raise ValueError(
         f"Error: OpenAI version {openai.__version__} is less than the required version 1.1.1"
@@ -35,11 +35,11 @@ assistant_id = functions.create_assistant(client)
 # Start conversation thread
 @app.route('/start', methods=['GET'])
 def start_conversation():
-    print("Starting a new conversation...")
+    # print("Starting a new conversation...")
     thread = client.beta.threads.create()
-    print(f"New thread created with ID: {thread.id}")
+    # print(f"New thread created with ID: {thread.id}")
 
-    # Create the response object
+    # # Create the response object
     response = jsonify({"thread_id": thread.id})
 
     # Add CORS headers to the response
@@ -53,6 +53,23 @@ def start_conversation():
 @app.route('/')
 def index():
     return 'Server running'
+
+
+
+
+
+
+@app.route('/download_audio', methods=['GET'])
+def download_audio():
+    # Endpoint to download the generated audio file
+    return send_file("output.mp3", mimetype='audio/mpeg', as_attachment=True, download_name='response.mp3')
+
+
+
+
+
+
+
 
 
 # Generate response
@@ -147,9 +164,25 @@ def chat():
     response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+     # Generate speech from the response text using OpenAI's TTS API
 
-    return response
+    response_text = messages.data[0].content[0].text.value
 
+    # Generate speech from the response text using OpenAI's TTS API
+    audio_response = client.audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=response_text
+    )
+
+    # Save the audio file
+    audio_file_path = "output.mp3"
+    audio_response.stream_to_file(audio_file_path)
+    print("response",response_text)
+    return jsonify({
+            "text_response": response_text,
+            "audio_response": "/download_audio"  # Endpoint to download the audio file
+        })
 
 if __name__ == '__main__':
-     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 8000)))
+     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 3001)))
