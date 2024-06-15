@@ -9,6 +9,7 @@ import openai
 from openai import OpenAI
 import functions
 from dotenv import load_dotenv
+import base64
 
 load_dotenv()
 # Check OpenAI version compatibility
@@ -165,7 +166,7 @@ def chat():
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
      # Generate speech from the response text using OpenAI's TTS API
-
+   
     response_text = messages.data[0].content[0].text.value
 
     # Generate speech from the response text using OpenAI's TTS API
@@ -174,15 +175,19 @@ def chat():
         voice="alloy",
         input=response_text
     )
-
     # Save the audio file
     audio_file_path = "output.mp3"
     audio_response.stream_to_file(audio_file_path)
-    print("response",response_text)
-    return jsonify({
-            "text_response": response_text,
-            "audio_response": "/download_audio"  # Endpoint to download the audio file
-        })
+    with open(audio_file_path, "rb") as audio_file:
+        audio_base64 = base64.b64encode(audio_file.read()).decode('utf-8')
+    
+    response = {
+        'text': response_text,
+        'audio': audio_base64
+    }
+    print("data",response)
+    return jsonify(response)
+    # return send_file(audio_file_path, mimetype='audio/mpeg', as_attachment=True, download_name='response.mp3')
 
 if __name__ == '__main__':
      app.run(host='0.0.0.0', port=int(os.getenv("PORT", 3001)))
