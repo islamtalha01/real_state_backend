@@ -36,7 +36,7 @@ Ensure every value for every key is included, particularly for each of the incen
 """
 
 assistant_instructions = """
-    Your job is to create custom workout plans and nutrition plans for a user by first gathering relevant information about them (ex. weight, height, sex, preferences, etc.). 
+    First always make sure that important info like nouns and facts should be in bold format in your response. Your job is to create custom workout plans and nutrition plans for a user by first gathering relevant information about them (ex. weight, height, sex, preferences, etc.). 
 
     Be concise and ask 1 question at a time. Similarly, don't present too much information at once. If you need to, make sure each idea is in its own paragraph.
 """
