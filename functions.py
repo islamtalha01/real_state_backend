@@ -14,156 +14,156 @@ AIRTABLE_API_KEY = os.environ['AIRTABLE_API_KEY']
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
-# Add lead to Airtable
-def create_lead(name, phone, address):
-  url = "https://api.airtable.com/v0/appM1yx0NobvowCAg/Leads"  # Change this to your Airtable API URL
-  headers = {
-      "Authorization": AIRTABLE_API_KEY,
-      "Content-Type": "application/json"
-  }
-  data = {
-      "records": [{
-          "fields": {
-              "Name": name,
-              "Phone": phone,
-              "Address": address
-          }
-      }]
-  }
-  response = requests.post(url, headers=headers, json=data)
-  if response.status_code == 200:
-    print("Lead created successfully.")
-    return response.json()
-  else:
-    print(f"Failed to create lead: {response.text}")
+# # Add lead to Airtable
+# def create_lead(name, phone, address):
+#   url = "https://api.airtable.com/v0/appM1yx0NobvowCAg/Leads"  # Change this to your Airtable API URL
+#   headers = {
+#       "Authorization": AIRTABLE_API_KEY,
+#       "Content-Type": "application/json"
+#   }
+#   data = {
+#       "records": [{
+#           "fields": {
+#               "Name": name,
+#               "Phone": phone,
+#               "Address": address
+#           }
+#       }]
+#   }
+#   response = requests.post(url, headers=headers, json=data)
+#   if response.status_code == 200:
+#     print("Lead created successfully.")
+#     return response.json()
+#   else:
+#     print(f"Failed to create lead: {response.text}")
 
 
-# Get coordidinates from address via Geocoding API
-def get_coordinates(address):
-  geocoding_url = f"https://maps.googleapis.com/maps/api/geocode/json?address={address}&key={GOOGLE_CLOUD_API_KEY}"
-  response = requests.get(geocoding_url)
-  if response.status_code == 200:
-    location = response.json().get('results')[0].get('geometry').get(
-        'location')
-    print(f"Coordinates for {address}: {location}")
-    return location['lat'], location['lng']
-  else:
-    print(f"Error getting coordinates: {response.text}")
+# # Get coordidinates from address via Geocoding API
+# def get_coordinates(address):
+#   geocoding_url = f"https://maps.googleapis.com/maps/api/geocode/json?address={address}&key={GOOGLE_CLOUD_API_KEY}"
+#   response = requests.get(geocoding_url)
+#   if response.status_code == 200:
+#     location = response.json().get('results')[0].get('geometry').get(
+#         'location')
+#     print(f"Coordinates for {address}: {location}")
+#     return location['lat'], location['lng']
+#   else:
+#     print(f"Error getting coordinates: {response.text}")
 
 
-# Get solar data for coordinate from Solar API
-def get_solar_data(lat, lng):
-  solar_api_url = f"https://solar.googleapis.com/v1/buildingInsights:findClosest?location.latitude={lat}&location.longitude={lng}&requiredQuality=HIGH&key={GOOGLE_CLOUD_API_KEY}"
-  response = requests.get(solar_api_url)
-  if response.status_code == 200:
-    print("Solar data retrieved successfully.")
-    return response.json()
-  else:
-    print(f"Error getting solar data: {response.text}")
+# # Get solar data for coordinate from Solar API
+# def get_solar_data(lat, lng):
+#   solar_api_url = f"https://solar.googleapis.com/v1/buildingInsights:findClosest?location.latitude={lat}&location.longitude={lng}&requiredQuality=HIGH&key={GOOGLE_CLOUD_API_KEY}"
+#   response = requests.get(solar_api_url)
+#   if response.status_code == 200:
+#     print("Solar data retrieved successfully.")
+#     return response.json()
+#   else:
+#     print(f"Error getting solar data: {response.text}")
 
 
-# Extract financial data LIST from solar data
-def extract_financial_analyses(solar_data):
-  try:
-    return solar_data.get('solarPotential', {}).get('financialAnalyses', [])
-  except KeyError as e:
-    print(f"Data extraction error: {e}")
+# # Extract financial data LIST from solar data
+# def extract_financial_analyses(solar_data):
+#   try:
+#     return solar_data.get('solarPotential', {}).get('financialAnalyses', [])
+#   except KeyError as e:
+#     print(f"Data extraction error: {e}")
 
 
-# Get financial data for the address
-def get_financial_data_for_address(address):
-  lat, lng = get_coordinates(address)
-  if not lat or not lng:
-    return {"error": "Could not get coordinates for the address provided."}
-  return extract_financial_analyses(get_solar_data(lat, lng))
+# # Get financial data for the address
+# def get_financial_data_for_address(address):
+#   lat, lng = get_coordinates(address)
+#   if not lat or not lng:
+#     return {"error": "Could not get coordinates for the address provided."}
+#   return extract_financial_analyses(get_solar_data(lat, lng))
 
 
-# Match user's bill to scenario in the financial data
-def find_closest_financial_analysis(user_bill, financial_analyses):
-  closest_match = None
-  smallest_difference = float('inf')
-  for analysis in financial_analyses:
-    bill_amount = int(analysis.get('monthlyBill', {}).get('units', 0))
-    difference = abs(bill_amount - user_bill)
-    if difference < smallest_difference:
-      smallest_difference = difference
-      closest_match = analysis
-  return closest_match
+# # Match user's bill to scenario in the financial data
+# def find_closest_financial_analysis(user_bill, financial_analyses):
+#   closest_match = None
+#   smallest_difference = float('inf')
+#   for analysis in financial_analyses:
+#     bill_amount = int(analysis.get('monthlyBill', {}).get('units', 0))
+#     difference = abs(bill_amount - user_bill)
+#     if difference < smallest_difference:
+#       smallest_difference = difference
+#       closest_match = analysis
+#   return closest_match
 
 
-# Use GPT completion to extract most relevant data from financial analysis
-def simplify_financial_data(data):
-  try:
+# # Use GPT completion to extract most relevant data from financial analysis
+# def simplify_financial_data(data):
+#   try:
 
-    data_str = json.dumps(data, indent=2)
+#     data_str = json.dumps(data, indent=2)
 
-    # Getting formatter prompt from "prompts.py" file
-    system_prompt = formatter_prompt
+#     # Getting formatter prompt from "prompts.py" file
+#     system_prompt = formatter_prompt
 
-    # Replace 'client' with your actual OpenAI client initialization.
-    completion = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        # model="gpt-4-1106-preview",
-        messages=[
-            {
-                "role": "system",
-                "content":
-                system_prompt  # Getting prompt from "prompts.py" file
-            },
-            {
-                "role":
-                "user",
-                "content":
-                f"Here is some data, parse and format it exactly as shown in the example: {data_str}"
-            }
-        ],
-        temperature=0,
-        # stream=True,
+#     # Replace 'client' with your actual OpenAI client initialization.
+#     completion = client.chat.completions.create(
+#         model="gpt-3.5-turbo",
+#         # model="gpt-4-1106-preview",
+#         messages=[
+#             {
+#                 "role": "system",
+#                 "content":
+#                 system_prompt  # Getting prompt from "prompts.py" file
+#             },
+#             {
+#                 "role":
+#                 "user",
+#                 "content":
+#                 f"Here is some data, parse and format it exactly as shown in the example: {data_str}"
+#             }
+#         ],
+#         temperature=0,
+#         # stream=True,
 
-        )
+#         )
 
-    simplified_data = json.loads(completion.choices[0].message.content)
-    print("Simplified Data:", simplified_data)
-    return simplified_data
+#     simplified_data = json.loads(completion.choices[0].message.content)
+#     print("Simplified Data:", simplified_data)
+#     return simplified_data
 
-  except Exception as e:
-    print("Error simplifying data:", e)
-    return None
+#   except Exception as e:
+#     print("Error simplifying data:", e)
+#     return None
 
 
-# Main calculation function for solar data output
-def solar_panel_calculations(address, monthly_bill):
-  print(
-      f"Calculating solar panel potential for {address} with bill amount {monthly_bill}."
-  )
-  financial_analyses = get_financial_data_for_address(address)
-  if "error" in financial_analyses:
-    print(financial_analyses["error"])
-    return financial_analyses
-  closest_financial_analysis = find_closest_financial_analysis(
-      int(monthly_bill), financial_analyses)
-  if closest_financial_analysis:
-    return simplify_financial_data(closest_financial_analysis)
-  else:
-    print("No suitable financial analysis found.")
-    return {
-        "error": "No suitable financial analysis found for the given bill."
-    }
+# # Main calculation function for solar data output
+# def solar_panel_calculations(address, monthly_bill):
+#   print(
+#       f"Calculating solar panel potential for {address} with bill amount {monthly_bill}."
+#   )
+#   financial_analyses = get_financial_data_for_address(address)
+#   if "error" in financial_analyses:
+#     print(financial_analyses["error"])
+#     return financial_analyses
+#   closest_financial_analysis = find_closest_financial_analysis(
+#       int(monthly_bill), financial_analyses)
+#   if closest_financial_analysis:
+#     return simplify_financial_data(closest_financial_analysis)
+#   else:
+#     print("No suitable financial analysis found.")
+#     return {
+#         "error": "No suitable financial analysis found for the given bill."
+#     }
 
-def get_chocolate_price(brand, quantity):
-  print(
-      f"Calculating price for {brand} chocolate for amount {quantity}."
-  )
-  # Mock price for 1 KitKat bar
-  kitkat_price = 1.50
+# def get_chocolate_price(brand, quantity):
+#   print(
+#       f"Calculating price for {brand} chocolate for amount {quantity}."
+#   )
+#   # Mock price for 1 KitKat bar
+#   kitkat_price = 1.50
   
-  # Calculate total price based on quantity
-  total_price = kitkat_price * quantity
+#   # Calculate total price based on quantity
+#   total_price = kitkat_price * quantity
   
-  return {
-      "price": total_price,
-      "message": f"The estimated price for {quantity} {brand} bar(s) is ${total_price:.2f}"
-  }
+#   return {
+#       "price": total_price,
+#       "message": f"The estimated price for {quantity} {brand} bar(s) is ${total_price:.2f}"
+#   }
   
 
 

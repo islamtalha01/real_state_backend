@@ -78,6 +78,7 @@ def download_audio():
 def chat():
     data = request.json
     thread_id = data.get('thread_id')
+    voice_flag = data.get('voiceResponse')
     user_input = data.get('message', '')
 
     if not thread_id:
@@ -151,7 +152,7 @@ def chat():
 
     # Retrieve and return the latest message from the assistant
     messages = client.beta.threads.messages.list(thread_id=thread_id)
-    response = messages.data[0].content[0].text.value
+    # response = messages.data[0].content[0].text.value
 
     # print(f"Assistant response: {response}")
     # for chunk in response:
@@ -159,7 +160,7 @@ def chat():
     #         time.sleep(0.1)
 
     # return Response(generate_response(), content_type='text/event-stream')
-    response = jsonify({"response": response})
+    # response = jsonify({"response": response})
 
     # Add CORS headers to the response
     response.headers.add('Access-Control-Allow-Origin', '*')
@@ -168,9 +169,13 @@ def chat():
      # Generate speech from the response text using OpenAI's TTS API
    
     response_text = messages.data[0].content[0].text.value
-
-    # Generate speech from the response text using OpenAI's TTS API
-    audio_response = client.audio.speech.create(
+    if(voice_flag){
+        response = {
+        'text': response_text}
+        return jsonify(response)
+    }
+    else{
+  audio_response = client.audio.speech.create(
         model="tts-1",
         voice="alloy",
         input=response_text
@@ -187,6 +192,9 @@ def chat():
     }
     print("data",response)
     return jsonify(response)
+    }
+    # Generate speech from the response text using OpenAI's TTS API
+  
     # return send_file(audio_file_path, mimetype='audio/mpeg', as_attachment=True, download_name='response.mp3')
 
 if __name__ == '__main__':
