@@ -10,16 +10,17 @@ from openai import OpenAI
 import functions
 from dotenv import load_dotenv
 import base64
-
-load_dotenv()
-# Check OpenAI version compatibility
 from packaging import version
 
+# Check OpenAI version compatibility
+load_dotenv()
 app = Flask(__name__)
 CORS(app) 
 required_version = version.parse("1.1.1")
 current_version = version.parse(openai.__version__)
 OPENAI_API_KEY = os.environ['OPENAI_API_KEY'].rstrip()
+
+
 if current_version < required_version:
     raise ValueError(
         f"Error: OpenAI version {openai.__version__} is less than the required version 1.1.1"
@@ -68,19 +69,13 @@ def download_audio():
 
 
 
-
-
-
-
-
-# Generate response
 @app.route('/chat', methods=['POST','GET'])
 def chat():
     data = request.json
     thread_id = data.get('thread_id')
     voice_flag = data.get('voiceResponse')
     user_input = data.get('message', '')
-
+    print("voice flag value is ", voice_flag)
     if not thread_id:
         print("Error: Missing thread_id")
         return jsonify({"error": "Missing thread_id"}), 400
@@ -105,97 +100,58 @@ def chat():
         elif run_status.status == 'requires_action':
             # Handle the function call
             for tool_call in run_status.required_action.submit_tool_outputs.tool_calls:
-                if tool_call.function.name == "solar_panel_calculations":
-                    # Process solar panel calculations
+                if tool_call.function.name == "get_property_value_estimate":
+                    # Process property value estimation
                     arguments = json.loads(tool_call.function.arguments)
-                    output = functions.solar_panel_calculations(
-                        arguments["address"], arguments["monthly_bill"])
+                    output = functions.get_property_value_estimate(arguments["address"], arguments["features"])
                     client.beta.threads.runs.submit_tool_outputs(thread_id=thread_id,
                                                                  run_id=run.id,
                                                                  tool_outputs=[{
-                                                                     "tool_call_id":
-                                                                         tool_call.id,
-                                                                     "output":
-                                                                         json.dumps(output)
+                                                                     "tool_call_id": tool_call.id,
+                                                                     "output": json.dumps(output)
                                                                  }])
-                elif tool_call.function.name == "create_lead":
-                    # Process lead creation
-                    arguments = json.loads(tool_call.function.arguments)
-                    output = functions.create_lead(arguments["name"], arguments["phone"],
-                                                   arguments["address"])
-                    client.beta.threads.runs.submit_tool_outputs(thread_id=thread_id,
-                                                                 run_id=run.id,
-                                                                 tool_outputs=[{
-                                                                     "tool_call_id":
-                                                                         tool_call.id,
-                                                                     "output":
-                                                                         json.dumps(output)
-                                                                 }])
-                elif tool_call.function.name == "get_chocolate_price":
-                    print("entering get_chocolate_price")
-                    arguments = json.loads(tool_call.function.arguments)
-                    print("entering get_chocolate_price 2")
-                    output = functions.get_chocolate_price("kitkat",
-                                                            arguments["quantity"])
-                    print("entering get_chocolate_price 3")
-                    client.beta.threads.runs.submit_tool_outputs(thread_id=thread_id,
-                                                                 run_id=run.id,
-                                                                 tool_outputs=[{
-                                                                     "tool_call_id":
-                                                                         tool_call.id,
-                                                                     "output":
-                                                                         json.dumps(output)
-                                                                 }])
-                    print("entering get_chocolate_price 4")
-
             time.sleep(1)  # Wait for a second before checking again
 
     # Retrieve and return the latest message from the assistant
     messages = client.beta.threads.messages.list(thread_id=thread_id)
-    # response = messages.data[0].content[0].text.value
-
-    # print(f"Assistant response: {response}")
-    # for chunk in response:
-    #         yield f"data: {chunk}\n\n"
-    #         time.sleep(0.1)
-
-    # return Response(generate_response(), content_type='text/event-stream')
-    # response = jsonify({"response": response})
+   
+    response_text = messages.data[0].content[0].text.value
+    print("result",response_text)
 
     # Add CORS headers to the response
+   
+
+
+    response = jsonify({'text': response_text})
     response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-     # Generate speech from the response text using OpenAI's TTS API
-   
-    response_text = messages.data[0].content[0].text.value
-    if(voice_flag){
-        response = {
-        'text': response_text}
-        return jsonify(response)
-    }
-    else{
-  audio_response = client.audio.speech.create(
+    
+    if voice_flag:
+        return response
+    else:
+        print("in else")
+        audio_response = client.audio.speech.create(
         model="tts-1",
         voice="alloy",
         input=response_text
-    )
+        )
     # Save the audio file
-    audio_file_path = "output.mp3"
-    audio_response.stream_to_file(audio_file_path)
-    with open(audio_file_path, "rb") as audio_file:
-        audio_base64 = base64.b64encode(audio_file.read()).decode('utf-8')
+        audio_file_path = "test.mp3"
+        audio_response.stream_to_file(audio_file_path)
+        with open(audio_file_path, "rb") as audio_file:
+         audio_base64 = base64.b64encode(audio_file.read()).decode('utf-8')
     
-    response = {
-        'text': response_text,
-        'audio': audio_base64
-    }
-    print("data",response)
-    return jsonify(response)
-    }
-    # Generate speech from the response text using OpenAI's TTS API
-  
-    # return send_file(audio_file_path, mimetype='audio/mpeg', as_attachment=True, download_name='response.mp3')
+        response = {
+            'text': response_text,
+            'audio': audio_base64
+        }
+        print("data",response)
+        return jsonify(response)
+
+
+
+
 
 if __name__ == '__main__':
      app.run(host='0.0.0.0', port=int(os.getenv("PORT", 3001)))
